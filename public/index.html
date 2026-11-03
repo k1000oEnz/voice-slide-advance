@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Avance de diapositivas por voz</title>
+<style>
+  :root {
+    --bg: #10131a; --panel: #171c26; --line: #262d3b; --text: #e6e9ef;
+    --dim: #8b95a7; --ok: #3ecf8e; --warn: #f0a35e; --err: #ef6a6a; --accent: #5b9dff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, "Segoe UI", sans-serif;
+  }
+  main { max-width: 940px; margin: 0 auto; padding: 24px 20px 60px; }
+  h1 { font-size: 20px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: var(--dim); font-size: 13px; margin-bottom: 18px; }
+  .bar {
+    display: flex; align-items: center; gap: 14px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;
+  }
+  .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--dim); flex: none; }
+  .dot.live { background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: pulse 1.6s infinite; }
+  .dot.err { background: var(--err); }
+  .dot.off { background: var(--warn); }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(62,207,142,.5); } 70% { box-shadow: 0 0 0 12px rgba(62,207,142,0); } 100% { box-shadow: 0 0 0 0 rgba(62,207,142,0); } }
+  #statusText { flex: 1; font-size: 15px; }
+  button {
+    font: inherit; border-radius: 9px; border: 1px solid var(--line);
+    background: #202838; color: var(--text); padding: 9px 14px; cursor: pointer;
+  }
+  button:hover { background: #26304a; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #0b1020; font-weight: 600; }
+  button.mini { padding: 4px 9px; font-size: 12px; color: var(--dim); }
+  .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 0 0 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 5px 0; vertical-align: middle; }
+  td.act { width: 92px; color: var(--dim); font-size: 13px; }
+  td.kw { padding-right: 8px; }
+  input[type=text] {
+    width: 100%; font: inherit; font-size: 14px; padding: 7px 9px; border-radius: 8px;
+    border: 1px solid var(--line); background: #111722; color: var(--text);
+  }
+  input:focus { outline: 1px solid var(--accent); border-color: transparent; }
+  .row { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--dim); }
+  .row input { width: 70px; }
+  #heard {
+    min-height: 96px; background: #111722; border: 1px solid var(--line); border-radius: 9px;
+    padding: 10px 12px; font-size: 15px; word-break: break-word;
+  }
+  #heard .interim { color: var(--dim); }
+  #log { list-style: none; margin: 0; padding: 0; font-size: 13px; max-height: 200px; overflow: auto; }
+  #log li { padding: 4px 0; border-bottom: 1px solid var(--line); display: flex; gap: 8px; }
+  #log li .t { color: var(--dim); flex: none; font-variant-numeric: tabular-nums; }
+  #log li .a { color: var(--ok); font-weight: 600; }
+  #log li.skip .a { color: var(--warn); }
+  #log li.bad .a { color: var(--err); }
+  .hint { font-size: 12.5px; color: var(--dim); margin-top: 14px; }
+  .hint code { background: #111722; padding: 1px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Avance de diapositivas por voz</h1>
+  <p class="sub">Di <strong>«totales»</strong> (o la palabra que configures) y se enviará la flecha a PowerPoint.</p>
+
+  <div class="bar">
+    <div class="dot off" id="dot"></div>
+    <div id="statusText">Pulsa Iniciar escucha y deja esta pestaña abierta.</div>
+    <button class="primary" id="toggle">Iniciar escucha</button>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Palabras clave (separadas por comas)</h2>
+      <table id="triggers"></table>
+      <div class="row">
+        <label for="cooldown">Enfriamiento</label>
+        <input type="text" id="cooldown" value="1.5" size="4">
+        <span>segundos entre comandos</span>
+      </div>
+      <p class="hint">
+        El servidor local debe estar corriendo: <code>npm start</code>.<br>
+        Necesitas internet (el reconocimiento usa el servicio de Google del navegador) y permisos de micrófono.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Lo que escucho</h2>
+      <div id="heard"><span class="interim">Silencio…</span></div>
+      <h2 style="margin-top:16px">Comandos enviados</h2>
+      <ul id="log"></ul>
+    </section>
+  </div>
+</main>
+
+<script>
+const ACTIONS = [
+  { action: 'next',   label: 'Siguiente',   dflt: 'totales, siguiente',        key: '→' },
+  { action: 'prev',   label: 'Anterior',    dflt: 'anterior, retrocede',       key: '←' },
+  { action: 'end',    label: 'Última',      dflt: 'conclusión final',          key: 'Fin' },
+  { action: 'black',  label: 'Pantalla negra', dflt: 'pantalla negra',         key: 'B' },
+  { action: 'white',  label: 'Pantalla blanca', dflt: 'pantalla blanca',      key: 'W' },
+  { action: 'stop',   label: 'Terminar',    dflt: 'terminar presentación',     key: 'Esc' }
+];
+
+const $ = (id) => document.getElementById(id);
+const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+function loadConfig() {
+  const saved = JSON.parse(localStorage.getItem('voice-slides') || '{}');
+  ACTIONS.forEach((a) => (a.words = saved[a.action] ?? a.dflt));
+  ACTIONS.forEach((a) => (a.re = a.words.split(',').map((w) => norm(w)).filter(Boolean)
+    .map((w) => new RegExp(`(^| )(${esc(w)})( |$)`))));
+  $('cooldown').value = saved.cooldown ?? 1.5;
+}
+
+function saveConfig() {
+  const out = { cooldown: Number($('cooldown').value) || 0 };
+  ACTIONS.forEach((a) => { out[a.action] = a.words; });
+  localStorage.setItem('voice-slides', JSON.stringify(out));
+  ACTIONS.forEach((a) => {
+    a.re = a.words.split(',').map((w) => norm(w)).filter(Boolean).map((w) => new RegExp(`(^| )(${esc(w)})( |$)`));
+  });
+}
+
+function renderTriggers() {
+  $('triggers').innerHTML = ACTIONS.map((a) => `
+    <tr>
+      <td class="act">${a.label}</td>
+      <td class="kw"><input type="text" data-act="${a.action}" value="${a.words.replace(/"/g, '&quot;')}"></td>
+      <td><button class="mini" data-fire="${a.action}" title="Probar tecla ${a.key}">${a.key}</button></td>
+    </tr>`).join('');
+  $('triggers').querySelectorAll('input').forEach((inp) => {
+    inp.addEventListener('change', () => {
+      ACTIONS.find((a) => a.action === inp.dataset.act).words = inp.value;
+      saveConfig();
+    });
+  });
+  $('triggers').querySelectorAll('[data-fire]').forEach((btn) => {
+    btn.addEventListener('click', () => send(btn.dataset.fire, '(prueba manual)'));
+  });
+}
+
+function status(text, cls) {
+  $('statusText').textContent = text;
+  $('dot').className = 'dot ' + cls;
+}
+
+function log(text, kind) {
+  const li = document.createElement('li');
+  li.className = kind || '';
+  li.innerHTML = `<span class="t">${new Date().toLocaleTimeString()}</span><span class="a">${text}</span>`;
+  $('log').prepend(li);
+  while ($('log').children.length > 40) $('log').lastChild.remove();
+}
+
+async function send(action, spoken) {
+  try {
+    const r = await fetch('/command', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action, spoken })
+    });
+    const j = await r.json();
+    if (j.ok) log(`${action}  ·  "${spoken}"`);
+    else { log(`${action} rechazado: ${j.error}`, 'bad'); status('El servidor rechazó el comando.', 'err'); }
+  } catch {
+    log(`No hay conexión con el servidor (npm start).`, 'bad');
+    status('Servidor local no encontrado: ejecuta npm start.', 'err');
+  }
+}
+
+let lastFire = 0;
+function matchCommand(finalText) {
+  const text = ' ' + norm(finalText) + ' ';
+  const cd = (Number($('cooldown').value) || 0) * 1000;
+  if (Date.now() - lastFire < cd) return null;
+  for (const a of ACTIONS) {
+    if (a.re.some((re) => re.test(text))) return a;
+  }
+  return null;
+}
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+let listening = false;
+let wantListening = false;
+
+if (!SR) {
+  status('Este navegador no tiene Web Speech API. Usa Chrome o Edge.', 'err');
+  $('toggle').disabled = true;
+}
+
+function build() {
+  rec = new SR();
+  rec.lang = 'es-ES';
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.maxAlternatives = 1;
+
+  rec.onresult = (ev) => {
+    let interim = '';
+    let final = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const t = ev.results[i][0].transcript;
+      if (ev.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    $('heard').innerHTML = (final ? final + ' ' : '') + `<span class="interim">${interim}</span>`;
+    if (!final) return;
+    const hit = matchCommand(final);
+    if (hit) {
+      lastFire = Date.now();
+      send(hit.action, final.trim());
+    }
+  };
+
+  rec.onerror = (ev) => {
+    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+      wantListening = false;
+      status('Micrófono denegado. Reinicia el permiso en el icono del candado.', 'err');
+    } else if (ev.error === 'network') {
+      status('Sin conexión: el reconocimiento de Chrome necesita internet.', 'err');
+    } else if (ev.error !== 'aborted') {
+      status(`Error de reconocimiento: ${ev.error}`, 'err');
+    }
+  };
+
+  rec.onend = () => {
+    if (!wantListening) { listening = false; return; }
+    try { rec.start(); } catch { /* ya estaba activo */ }
+  };
+}
+
+function start() {
+  wantListening = true;
+  if (!rec) build();
+  try { rec.start(); listening = true; } catch { listening = true; }
+  $('toggle').textContent = 'Silenciar';
+  status('Escuchando… di tu palabra clave al terminar la diapositiva.', 'live');
+}
+
+function stop() {
+  wantListening = false;
+  listening = false;
+  if (rec) rec.stop();
+  $('toggle').textContent = 'Iniciar escucha';
+  status('En pausa.', 'off');
+}
+
+$('toggle').addEventListener('click', () => (wantListening ? stop() : start()));
+loadConfig();
+renderTriggers();
+
+fetch('/health').then((r) => r.json()).then((j) => {
+  log('Servidor local conectado.');
+}).catch(() => status('Servidor local no encontrado: ejecuta npm start.', 'err'));
+
+window.addEventListener('beforeunload', stop);
+</script>
+</body>
+</html>

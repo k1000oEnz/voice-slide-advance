@@ -1,0 +1,13 @@
+{
+  "name": "voice-slide-advance",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Avanza diapositivas de PowerPoint al escuchar una palabra clave",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "koffi": "^2.9.0"
+  }
+}
