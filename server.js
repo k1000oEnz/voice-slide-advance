@@ -15,6 +15,7 @@ const HOST = '127.0.0.1';
 const PORT = Number(process.env.PORT || 8734);
 const PUBLIC = path.join(__dirname, 'public');
 const MAX_AUDIO = 1024 * 1024;
+const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
 
 function readBody(req, limit) {
   return new Promise((resolve, reject) => {
@@ -119,7 +120,8 @@ const server = http.createServer(async (req, res) => {
       res.end('not found');
       return;
     }
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+    const type = MIME[path.extname(target).toLowerCase()] || 'application/octet-stream';
+    res.writeHead(200, { 'content-type': `${type}; charset=utf-8`, 'cache-control': 'no-store' });
     fs.createReadStream(target).pipe(res);
     return;
   }
