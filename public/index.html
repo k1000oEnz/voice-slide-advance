@@ -10,49 +10,38 @@
     --dim: #8b95a7; --ok: #3ecf8e; --warn: #f0a35e; --err: #ef6a6a; --accent: #5b9dff;
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 16px/1.5 system-ui, "Segoe UI", sans-serif;
-  }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, "Segoe UI", sans-serif; }
   main { max-width: 940px; margin: 0 auto; padding: 24px 20px 60px; }
   h1 { font-size: 20px; margin: 0 0 4px; font-weight: 600; }
   .sub { color: var(--dim); font-size: 13px; margin-bottom: 18px; }
   .bar {
     display: flex; align-items: center; gap: 14px; background: var(--panel);
-    border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;
+    border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; flex-wrap: wrap;
   }
   .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--dim); flex: none; }
-  .dot.live { background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: pulse 1.6s infinite; }
+  .dot.live { background: var(--ok); animation: pulse 1.6s infinite; }
   .dot.err { background: var(--err); }
   .dot.off { background: var(--warn); }
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(62,207,142,.5); } 70% { box-shadow: 0 0 0 12px rgba(62,207,142,0); } 100% { box-shadow: 0 0 0 0 rgba(62,207,142,0); } }
-  #statusText { flex: 1; font-size: 15px; }
-  button {
-    font: inherit; border-radius: 9px; border: 1px solid var(--line);
-    background: #202838; color: var(--text); padding: 9px 14px; cursor: pointer;
-  }
+  #statusText { flex: 1; min-width: 200px; font-size: 15px; }
+  button { font: inherit; border-radius: 9px; border: 1px solid var(--line); background: #202838; color: var(--text); padding: 9px 14px; cursor: pointer; }
   button:hover { background: #26304a; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #0b1020; font-weight: 600; }
   button.mini { padding: 4px 9px; font-size: 12px; color: var(--dim); }
+  select { font: inherit; font-size: 14px; background: #111722; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
   .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; }
   @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
   .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 0 0 12px; }
   table { width: 100%; border-collapse: collapse; }
   td { padding: 5px 0; vertical-align: middle; }
-  td.act { width: 92px; color: var(--dim); font-size: 13px; }
+  td.act { width: 110px; color: var(--dim); font-size: 13px; }
   td.kw { padding-right: 8px; }
-  input[type=text] {
-    width: 100%; font: inherit; font-size: 14px; padding: 7px 9px; border-radius: 8px;
-    border: 1px solid var(--line); background: #111722; color: var(--text);
-  }
+  input[type=text] { width: 100%; font: inherit; font-size: 14px; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--line); background: #111722; color: var(--text); }
   input:focus { outline: 1px solid var(--accent); border-color: transparent; }
-  .row { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--dim); }
+  .row { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--dim); flex-wrap: wrap; }
   .row input { width: 70px; }
-  #heard {
-    min-height: 96px; background: #111722; border: 1px solid var(--line); border-radius: 9px;
-    padding: 10px 12px; font-size: 15px; word-break: break-word;
-  }
+  #heard { min-height: 96px; background: #111722; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; font-size: 15px; word-break: break-word; }
   #heard .interim { color: var(--dim); }
   #log { list-style: none; margin: 0; padding: 0; font-size: 13px; max-height: 200px; overflow: auto; }
   #log li { padding: 4px 0; border-bottom: 1px solid var(--line); display: flex; gap: 8px; }
@@ -67,11 +56,15 @@
 <body>
 <main>
   <h1>Avance de diapositivas por voz</h1>
-  <p class="sub">Di <strong>«totales»</strong> (o la palabra que configures) y se enviará la flecha a PowerPoint.</p>
+  <p class="sub">Di <strong>«totales»</strong> (o la palabra que configures) al terminar de hablar y se enviará la flecha a PowerPoint.</p>
 
   <div class="bar">
     <div class="dot off" id="dot"></div>
     <div id="statusText">Pulsa Iniciar escucha y deja esta pestaña abierta.</div>
+    <select id="engine" title="Motor de reconocimiento">
+      <option value="vosk">Vosk (offline, todos los navegadores)</option>
+      <option value="google">Google (Chrome/Edge, requiere internet)</option>
+    </select>
     <button class="primary" id="toggle">Iniciar escucha</button>
   </div>
 
@@ -85,8 +78,9 @@
         <span>segundos entre comandos</span>
       </div>
       <p class="hint">
-        El servidor local debe estar corriendo: <code>npm start</code>.<br>
-        Necesitas internet (el reconocimiento usa el servicio de Google del navegador) y permisos de micrófono.
+        <strong>Vosk</strong>: se ejecuta en el servidor local, sin internet y funciona en Firefox. Prepara los binarios con <code>npm run setup-vosk</code>.<br>
+        <strong>Google</strong>: usa el reconocimiento del navegador (Chrome/Edge), necesita conexión.<br>
+        El servidor se arranca con <code>npm start</code>.
       </p>
     </section>
 
@@ -101,12 +95,12 @@
 
 <script>
 const ACTIONS = [
-  { action: 'next',   label: 'Siguiente',   dflt: 'totales, siguiente',        key: '→' },
-  { action: 'prev',   label: 'Anterior',    dflt: 'anterior, retrocede',       key: '←' },
-  { action: 'end',    label: 'Última',      dflt: 'conclusión final',          key: 'Fin' },
-  { action: 'black',  label: 'Pantalla negra', dflt: 'pantalla negra',         key: 'B' },
-  { action: 'white',  label: 'Pantalla blanca', dflt: 'pantalla blanca',      key: 'W' },
-  { action: 'stop',   label: 'Terminar',    dflt: 'terminar presentación',     key: 'Esc' }
+  { action: 'next',   label: 'Siguiente',       dflt: 'totales, siguiente',    key: '→' },
+  { action: 'prev',   label: 'Anterior',        dflt: 'anterior, retrocede',   key: '←' },
+  { action: 'end',    label: 'Última',          dflt: 'conclusión final',      key: 'Fin' },
+  { action: 'black',  label: 'Pantalla negra',  dflt: 'pantalla negra',        key: 'B' },
+  { action: 'white',  label: 'Pantalla blanca', dflt: 'pantalla blanca',       key: 'W' },
+  { action: 'stop',   label: 'Terminar',        dflt: 'terminar presentación', key: 'Esc' }
 ];
 
 const $ = (id) => document.getElementById(id);
@@ -116,18 +110,22 @@ const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function loadConfig() {
   const saved = JSON.parse(localStorage.getItem('voice-slides') || '{}');
   ACTIONS.forEach((a) => (a.words = saved[a.action] ?? a.dflt));
-  ACTIONS.forEach((a) => (a.re = a.words.split(',').map((w) => norm(w)).filter(Boolean)
-    .map((w) => new RegExp(`(^| )(${esc(w)})( |$)`))));
   $('cooldown').value = saved.cooldown ?? 1.5;
+  $('engine').value = saved.engine || 'vosk';
+  rebuildMatchers();
+}
+
+function rebuildMatchers() {
+  ACTIONS.forEach((a) => {
+    a.re = a.words.split(',').map(norm).filter(Boolean).map((w) => new RegExp(`(^| )(${esc(w)})( |$)`));
+  });
 }
 
 function saveConfig() {
-  const out = { cooldown: Number($('cooldown').value) || 0 };
+  const out = { cooldown: Number($('cooldown').value) || 0, engine: $('engine').value };
   ACTIONS.forEach((a) => { out[a.action] = a.words; });
   localStorage.setItem('voice-slides', JSON.stringify(out));
-  ACTIONS.forEach((a) => {
-    a.re = a.words.split(',').map((w) => norm(w)).filter(Boolean).map((w) => new RegExp(`(^| )(${esc(w)})( |$)`));
-  });
+  rebuildMatchers();
 }
 
 function renderTriggers() {
@@ -172,33 +170,99 @@ async function send(action, spoken) {
     if (j.ok) log(`${action}  ·  "${spoken}"`);
     else { log(`${action} rechazado: ${j.error}`, 'bad'); status('El servidor rechazó el comando.', 'err'); }
   } catch {
-    log(`No hay conexión con el servidor (npm start).`, 'bad');
+    log('Sin conexión con el servidor (npm start).', 'bad');
     status('Servidor local no encontrado: ejecuta npm start.', 'err');
   }
 }
 
 let lastFire = 0;
-function matchCommand(finalText) {
-  const text = ' ' + norm(finalText) + ' ';
+function onTranscript(finalText, isInterim) {
+  $('heard').innerHTML = finalText + (isInterim ? ` <span class="interim">${isInterim}</span>` : '');
+  if (!finalText) return;
   const cd = (Number($('cooldown').value) || 0) * 1000;
-  if (Date.now() - lastFire < cd) return null;
-  for (const a of ACTIONS) {
-    if (a.re.some((re) => re.test(text))) return a;
+  if (Date.now() - lastFire < cd) return;
+  const text = ' ' + norm(finalText) + ' ';
+  const hit = ACTIONS.find((a) => a.re.some((re) => re.test(text)));
+  if (hit) {
+    lastFire = Date.now();
+    send(hit.action, finalText.trim());
   }
-  return null;
 }
 
+/* ---------- Motor Vosk: micrófono -> PCM float32 -> POST /asr ---------- */
+const WORKLET = `
+class PcmOut extends AudioWorkletProcessor {
+  constructor() { super(); this.n = 0; this.buf = new Float32Array(1600); }
+  process(inputs) {
+    const ch = inputs[0] && inputs[0][0];
+    if (ch) {
+      let i = 0;
+      while (i < ch.length) {
+        const take = Math.min(this.buf.length - this.n, ch.length - i);
+        this.buf.set(ch.subarray(i, i + take), this.n);
+        this.n += take; i += take;
+        if (this.n === this.buf.length) {
+          this.port.postMessage(this.buf.slice(0), [this.buf.buffer]);
+          this.buf = new Float32Array(1600); this.n = 0;
+        }
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('pcm-out', PcmOut);`;
+
+let vosk = { ctx: null, stream: null, node: null, sid: null, queue: [], sending: false };
+
+async function startVosk() {
+  vosk.stream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+  });
+  vosk.ctx = new AudioContext();
+  const url = URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' }));
+  await vosk.ctx.audioWorklet.addModule(url);
+  URL.revokeObjectURL(url);
+  vosk.node = new AudioWorkletNode(vosk.ctx, 'pcm-out');
+  vosk.ctx.createMediaStreamSource(vosk.stream).connect(vosk.node);
+  vosk.node.port.onmessage = (e) => { vosk.queue.push(e.data); pumpVosk(); };
+  vosk.sid = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+  status(`Escuchando con Vosk a ${vosk.ctx.sampleRate} Hz…`, 'live');
+}
+
+async function pumpVosk() {
+  if (vosk.sending) return;
+  vosk.sending = true;
+  while (vosk.queue.length) {
+    const chunk = vosk.queue.shift();
+    if (vosk.queue.length > 4) vosk.queue.length = 0;
+    try {
+      const r = await fetch(`/asr?sid=${vosk.sid}&rate=${vosk.ctx.sampleRate}`, { method: 'POST', body: chunk });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'error de Vosk');
+      if (j.text) onTranscript(j.text, '');
+      else onTranscript('', j.partial || '');
+    } catch (err) {
+      status(`Vosk falló: ${err.message}`, 'err');
+      vosk.queue.length = 0;
+      break;
+    }
+  }
+  vosk.sending = false;
+}
+
+function stopVosk() {
+  if (vosk.sid) fetch(`/asr?sid=${vosk.sid}&flush=1`, { method: 'POST' }).catch(() => {});
+  if (vosk.node) vosk.node.disconnect();
+  if (vosk.stream) vosk.stream.getTracks().forEach((t) => t.stop());
+  if (vosk.ctx) vosk.ctx.close();
+  vosk = { ctx: null, stream: null, node: null, sid: null, queue: [], sending: false };
+}
+
+/* ---------- Motor Google: Web Speech API (Chrome/Edge) ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
-let listening = false;
-let wantListening = false;
 
-if (!SR) {
-  status('Este navegador no tiene Web Speech API. Usa Chrome o Edge.', 'err');
-  $('toggle').disabled = true;
-}
-
-function build() {
+function buildGoogle() {
   rec = new SR();
   rec.lang = 'es-ES';
   rec.continuous = true;
@@ -213,57 +277,76 @@ function build() {
       if (ev.results[i].isFinal) final += t;
       else interim += t;
     }
-    $('heard').innerHTML = (final ? final + ' ' : '') + `<span class="interim">${interim}</span>`;
-    if (!final) return;
-    const hit = matchCommand(final);
-    if (hit) {
-      lastFire = Date.now();
-      send(hit.action, final.trim());
-    }
+    onTranscript(final, interim);
   };
-
   rec.onerror = (ev) => {
     if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
       wantListening = false;
-      status('Micrófono denegado. Reinicia el permiso en el icono del candado.', 'err');
+      status('Micrófono denegado. Revisa el permiso en el icono del candado.', 'err');
     } else if (ev.error === 'network') {
       status('Sin conexión: el reconocimiento de Chrome necesita internet.', 'err');
-    } else if (ev.error !== 'aborted') {
+    } else if (ev.error !== 'aborted' && ev.error !== 'no-speech') {
       status(`Error de reconocimiento: ${ev.error}`, 'err');
     }
   };
-
   rec.onend = () => {
-    if (!wantListening) { listening = false; return; }
-    try { rec.start(); } catch { /* ya estaba activo */ }
+    if (wantListening && $('engine').value === 'google') {
+      try { rec.start(); } catch { /* ya activo */ }
+    }
   };
 }
 
-function start() {
+let wantListening = false;
+
+async function start() {
   wantListening = true;
-  if (!rec) build();
-  try { rec.start(); listening = true; } catch { listening = true; }
   $('toggle').textContent = 'Silenciar';
-  status('Escuchando… di tu palabra clave al terminar la diapositiva.', 'live');
+  const engine = $('engine').value;
+  if (engine === 'google') {
+    if (!SR) {
+      wantListening = false;
+      $('toggle').textContent = 'Iniciar escucha';
+      status('Este navegador no tiene Web Speech API: usa Vosk o Chrome/Edge.', 'err');
+      return;
+    }
+    if (!rec) buildGoogle();
+    try { rec.start(); } catch { /* ya activo */ }
+    status('Escuchando con el motor de Google…', 'live');
+    return;
+  }
+  try {
+    await startVosk();
+  } catch (err) {
+    wantListening = false;
+    $('toggle').textContent = 'Iniciar escucha';
+    status(err.name === 'NotAllowedError' ? 'Permiso de micrófono denegado.' : `Vosk no arrancó: ${err.message}`, 'err');
+  }
 }
 
 function stop() {
   wantListening = false;
-  listening = false;
-  if (rec) rec.stop();
+  if (rec) rec.abort();
+  stopVosk();
   $('toggle').textContent = 'Iniciar escucha';
   status('En pausa.', 'off');
 }
 
 $('toggle').addEventListener('click', () => (wantListening ? stop() : start()));
+$('engine').addEventListener('change', () => { if (wantListening) { stop(); start(); } else saveConfig(); });
+$('cooldown').addEventListener('change', saveConfig);
+
 loadConfig();
 renderTriggers();
 
 fetch('/health').then((r) => r.json()).then((j) => {
   log('Servidor local conectado.');
+  if (!j.vosk && $('engine').value === 'vosk') {
+    status('Vosk no está listo: ejecuta npm run setup-vosk, o usa el motor Google.', 'err');
+    $('engine').value = 'google';
+  }
 }).catch(() => status('Servidor local no encontrado: ejecuta npm start.', 'err'));
 
-window.addEventListener('beforeunload', stop);
+window.addEventListener('beforeunload', () => { if (vosk.sid) fetch(`/asr?sid=${vosk.sid}&flush=1`, { method: 'POST' }).catch(() => {}); });
 </script>
 </body>
 </html>

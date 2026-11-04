@@ -5,9 +5,11 @@
   "description": "Avanza diapositivas de PowerPoint al escuchar una palabra clave",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "setup-vosk": "node setup-vosk.js"
   },
   "dependencies": {
+    "extract-zip": "^2.0.1",
     "koffi": "^2.9.0"
   }
 }
