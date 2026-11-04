@@ -6,92 +6,225 @@
 <title>Avance de diapositivas por voz</title>
 <style>
   :root {
-    --bg: #10131a; --panel: #171c26; --line: #262d3b; --text: #e6e9ef;
-    --dim: #8b95a7; --ok: #3ecf8e; --warn: #f0a35e; --err: #ef6a6a; --accent: #5b9dff;
+    --ink: #0c1a1f;
+    --surface: #142a31;
+    --rule: #24454f;
+    --chalk: #ede7da;
+    --dim: #86a0a8;
+    --lamp: #e9a13c;
+    --alert: #d6452c;
+    --display: "Bahnschrift SemiCondensed", "Bahnschrift", "DIN Alternate", "Segoe UI Variable Text", system-ui, sans-serif;
+    --prompt: Georgia, "Iowan Old Style", "Times New Roman", serif;
   }
+
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, "Segoe UI", sans-serif; }
-  main { max-width: 940px; margin: 0 auto; padding: 24px 20px 60px; }
-  h1 { font-size: 20px; margin: 0 0 4px; font-weight: 600; }
-  .sub { color: var(--dim); font-size: 13px; margin-bottom: 18px; }
-  .bar {
-    display: flex; align-items: center; gap: 14px; background: var(--panel);
-    border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; flex-wrap: wrap;
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--chalk);
+    font: 400 16px/1.5 var(--display);
+    -webkit-font-smoothing: antialiased;
   }
-  .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--dim); flex: none; }
-  .dot.live { background: var(--ok); animation: pulse 1.6s infinite; }
-  .dot.err { background: var(--err); }
-  .dot.off { background: var(--warn); }
-  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(62,207,142,.5); } 70% { box-shadow: 0 0 0 12px rgba(62,207,142,0); } 100% { box-shadow: 0 0 0 0 rgba(62,207,142,0); } }
-  #statusText { flex: 1; min-width: 200px; font-size: 15px; }
-  button { font: inherit; border-radius: 9px; border: 1px solid var(--line); background: #202838; color: var(--text); padding: 9px 14px; cursor: pointer; }
-  button:hover { background: #26304a; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #0b1020; font-weight: 600; }
-  button.mini { padding: 4px 9px; font-size: 12px; color: var(--dim); }
-  select { font: inherit; font-size: 14px; background: #111722; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
-  .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; }
-  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
-  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 0 0 12px; }
+
+  .wrap {
+    max-width: 900px; margin: 0 auto; padding: 0 24px 40px;
+    min-height: 100dvh; display: flex; flex-direction: column;
+  }
+
+  /* ---------- raíl de estado ---------- */
+  .rail {
+    display: flex; align-items: center; gap: 14px;
+    padding: 20px 0 18px; border-bottom: 1px solid var(--rule); flex-wrap: wrap;
+  }
+  .lamp {
+    width: 11px; height: 11px; border-radius: 50%; flex: none;
+    background: #33525c; box-shadow: 0 0 0 1px var(--rule);
+  }
+  .lamp[data-state="live"] { background: var(--lamp); box-shadow: 0 0 12px 1px rgba(233, 161, 60, .55); animation: breathe 2.4s ease-in-out infinite; }
+  .lamp[data-state="alert"] { background: var(--alert); box-shadow: 0 0 10px 0 rgba(214, 69, 44, .5); animation: none; }
+  @keyframes breathe { 50% { box-shadow: 0 0 6px 0 rgba(233, 161, 60, .3); } }
+
+  .railState { margin: 0; font-size: 14px; letter-spacing: .04em; flex: 1; min-width: 190px; }
+  .railState .meta {
+    color: var(--dim); margin-left: 12px; padding-left: 12px;
+    border-left: 1px solid var(--rule);
+  }
+
+  button, select {
+    font: inherit; font-size: 14px; letter-spacing: .03em; color: var(--chalk);
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 8px 14px; cursor: pointer;
+  }
+  button:hover { background: #1a353d; }
+  button[data-variant="run"] { background: var(--lamp); border-color: var(--lamp); color: #10201f; font-weight: 600; }
+  button[data-variant="run"]:hover { background: #f2b357; }
+  button[aria-expanded="true"] { border-color: var(--lamp); color: var(--lamp); }
+  :focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+
+  /* ---------- palabra disparo ---------- */
+  .cue { padding: 56px 0 0; }
+  .cueLabel { margin: 0 0 6px; font-size: 14px; font-weight: 400; color: var(--dim); letter-spacing: .04em; }
+  .cueWord {
+    margin: 0; font: italic 400 clamp(46px, 11vw, 108px)/1.02 var(--prompt);
+    letter-spacing: -.01em; text-wrap: balance;
+  }
+  .cueWord .mark { font-size: .62em; color: var(--dim); font-style: normal; vertical-align: .06em; }
+  .cueAlso { margin: 10px 0 0; font-size: 14px; color: var(--dim); }
+
+  .meter { margin-top: 34px; height: 3px; background: #1c3b44; border-radius: 2px; overflow: hidden; }
+  .meterFill { display: block; height: 100%; width: 0; background: var(--lamp); transition: width 90ms linear; }
+  .meter[data-hot="true"] .meterFill { background: var(--alert); }
+
+  /* ---------- lo que ya dijiste ---------- */
+  .stream {
+    flex: 1 1 0px; min-height: 96px; margin-top: 42px; padding: 0 12px 30px 0; overflow-y: auto;
+    display: flex; flex-direction: column;
+    font: 400 17px/1.75 var(--prompt); color: var(--dim);
+    scrollbar-width: thin; scrollbar-color: #2b4d57 transparent;
+  }
+  .stream p { margin: auto 0 0; max-width: 74ch; }
+  .stream .said { color: var(--dim); }
+  .stream .said:last-child { color: var(--chalk); }
+  .stream .wordCue { font-style: italic; color: var(--lamp); }
+  .stream .said[data-state="blocked"] .wordCue { color: var(--dim); text-decoration: underline dotted; }
+  .stream .said[data-state="failed"] .wordCue { color: var(--alert); }
+
+  /* ---------- prompter ---------- */
+  .prompter {
+    margin-top: auto; padding: 22px 24px; background: var(--surface);
+    border-radius: 4px; border-left: 2px solid var(--rule); min-height: 118px;
+  }
+  .prompter[data-live="true"] { border-left-color: var(--lamp); }
+  .promptText {
+    margin: 0; font: 400 21px/1.55 var(--prompt); color: var(--chalk);
+    max-width: 68ch; min-height: 66px; word-break: break-word;
+  }
+  .promptText .interim { color: var(--dim); font-style: italic; }
+  .promptText.is-empty { color: #4a6b74; font-style: italic; }
+
+  /* ---------- marcador ---------- */
+  .scoreboard { display: flex; align-items: baseline; gap: 28px; margin-top: 34px; flex-wrap: wrap; }
+  .tally { display: flex; align-items: baseline; gap: 12px; }
+  .tallyNum {
+    font-size: 54px; font-weight: 600; line-height: 1; letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .tallyNum.is-ticking { animation: snap 320ms cubic-bezier(.2, .9, .2, 1); }
+  @keyframes snap { 0% { transform: translateY(-8px) scale(1.08); color: var(--lamp); } 100% { transform: none; } }
+  .tallyLabel { font-size: 14px; color: var(--dim); letter-spacing: .04em; }
+  .lastFired { margin: 0; font-size: 15px; color: var(--dim); max-width: 34ch; }
+  .lastFired[hidden] { display: none; }
+  .lastFired b { color: var(--chalk); font-weight: 600; }
+
+  /* ---------- ajustes ---------- */
+  .settings { margin-top: 52px; padding-top: 26px; border-top: 1px solid var(--rule); }
+  .settings[hidden] { display: none; }
+  .settingsGrid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 36px; }
+  @media (max-width: 760px) { .settingsGrid { grid-template-columns: 1fr; } }
+  .settings h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+  .settings .lead { margin: 0 0 18px; font-size: 14px; color: var(--dim); }
+
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 5px 0; vertical-align: middle; }
-  td.act { width: 110px; color: var(--dim); font-size: 13px; }
-  td.kw { padding-right: 8px; }
-  input[type=text] { width: 100%; font: inherit; font-size: 14px; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--line); background: #111722; color: var(--text); }
-  input:focus { outline: 1px solid var(--accent); border-color: transparent; }
-  .row { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--dim); flex-wrap: wrap; }
-  .row input { width: 70px; }
-  #heard { min-height: 96px; background: #111722; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; font-size: 15px; word-break: break-word; }
-  #heard .interim { color: var(--dim); }
-  #log { list-style: none; margin: 0; padding: 0; font-size: 13px; max-height: 200px; overflow: auto; }
-  #log li { padding: 4px 0; border-bottom: 1px solid var(--line); display: flex; gap: 8px; }
-  #log li .t { color: var(--dim); flex: none; font-variant-numeric: tabular-nums; }
-  #log li .a { color: var(--ok); font-weight: 600; }
-  #log li.skip .a { color: var(--warn); }
-  #log li.bad .a { color: var(--err); }
-  .hint { font-size: 12.5px; color: var(--dim); margin-top: 14px; }
-  .hint code { background: #111722; padding: 1px 5px; border-radius: 5px; }
+  td { padding: 7px 0; vertical-align: middle; border-bottom: 1px solid #1b3841; }
+  td.act { width: 118px; font-size: 14px; color: var(--dim); }
+  td.kw { padding-right: 10px; }
+  input[type="text"] {
+    width: 100%; font: inherit; font-size: 15px; padding: 7px 10px; color: var(--chalk);
+    background: #0f2229; border: 1px solid var(--rule); border-radius: 4px;
+  }
+  input[type="text"]:focus { outline: 1px solid var(--lamp); border-color: transparent; }
+  .fieldRow { display: flex; align-items: center; gap: 10px; margin-top: 18px; font-size: 14px; color: var(--dim); flex-wrap: wrap; }
+  .fieldRow input { width: 64px; }
+  .fieldRow select { font-size: 14px; }
+
+  .log { list-style: none; margin: 0; padding: 0; font-size: 14px; max-height: 220px; overflow: auto; }
+  .log li { display: flex; gap: 12px; padding: 6px 0; border-bottom: 1px solid #1b3841; }
+  .log .t { color: var(--dim); font-variant-numeric: tabular-nums; flex: none; }
+  .log .a { color: var(--lamp); }
+  .log li[data-kind="bad"] .a { color: var(--alert); }
+
+  .help { margin: 22px 0 0; font-size: 14px; line-height: 1.65; color: var(--dim); }
+  .help code { font-size: 13px; background: #0f2229; border: 1px solid #1b3841; border-radius: 3px; padding: 1px 5px; color: var(--chalk); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lamp[data-state="live"] { animation: none; }
+    .tallyNum.is-ticking { animation: none; }
+    .meterFill { transition: none; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <h1>Avance de diapositivas por voz</h1>
-  <p class="sub">Di <strong>«totales»</strong> (o la palabra que configures) al terminar de hablar y se enviará la flecha a PowerPoint.</p>
+<div class="wrap">
 
-  <div class="bar">
-    <div class="dot off" id="dot"></div>
-    <div id="statusText">Pulsa Iniciar escucha y deja esta pestaña abierta.</div>
-    <select id="engine" title="Motor de reconocimiento">
-      <option value="vosk">Vosk (offline, todos los navegadores)</option>
-      <option value="google">Google (Chrome/Edge, requiere internet)</option>
-    </select>
-    <button class="primary" id="toggle">Iniciar escucha</button>
-  </div>
+  <header class="rail">
+    <span class="lamp" id="lamp" data-state="idle" aria-hidden="true"></span>
+    <p class="railState"><span id="statusText">En pausa.</span><span class="meta" id="engineMeta">motor Vosk</span></p>
+    <button id="settingsBtn" aria-expanded="false" aria-controls="settings">Ajustes</button>
+    <button id="toggle" data-variant="run">Iniciar escucha</button>
+  </header>
 
-  <div class="grid">
-    <section class="card">
-      <h2>Palabras clave (separadas por comas)</h2>
-      <table id="triggers"></table>
-      <div class="row">
-        <label for="cooldown">Enfriamiento</label>
-        <input type="text" id="cooldown" value="1.5" size="4">
-        <span>segundos entre comandos</span>
+  <section class="cue">
+    <h1 class="cueLabel">Di esta palabra al terminar de hablar</h1>
+    <p class="cueWord" id="cueWord">«totales»</p>
+    <p class="cueAlso" id="cueAlso"></p>
+
+    <div class="meter" id="meter" role="img" aria-label="Nivel del micrófono" hidden>
+      <span class="meterFill" id="meterFill"></span>
+    </div>
+  </section>
+
+  <section class="stream" id="stream" aria-label="Lo que ya dijiste">
+    <p id="streamText"></p>
+  </section>
+
+  <section class="prompter" id="prompter">
+    <p class="promptText is-empty" id="heard">Silencio. Empieza a leer tu diapositiva.</p>
+  </section>
+
+  <section class="scoreboard">
+    <div class="tally">
+      <span class="tallyNum" id="advanceCount">0</span>
+      <span class="tallyLabel">avances enviados</span>
+    </div>
+    <p class="lastFired" id="lastFired" hidden>Todavía no has disparado ninguna tecla.</p>
+  </section>
+
+  <section class="settings" id="settings" hidden>
+    <div class="settingsGrid">
+      <div>
+        <h2>Palabras clave</h2>
+        <p class="lead">Separadas por comas. Se ignoran las tildes y mayúsculas.</p>
+        <table id="triggers"></table>
+        <div class="fieldRow">
+          <label for="cooldown">Enfriamiento</label>
+          <input type="text" id="cooldown" value="1.5" size="4">
+          <span>segundos entre comandos</span>
+        </div>
+        <div class="fieldRow">
+          <label for="engine">Motor</label>
+          <select id="engine">
+            <option value="vosk">Vosk · offline, sirve en Firefox</option>
+            <option value="google">Google · Chrome y Edge, con internet</option>
+          </select>
+        </div>
       </div>
-      <p class="hint">
-        <strong>Vosk</strong>: se ejecuta en el servidor local, sin internet y funciona en Firefox. Prepara los binarios con <code>npm run setup-vosk</code>.<br>
-        <strong>Google</strong>: usa el reconocimiento del navegador (Chrome/Edge), necesita conexión.<br>
-        El servidor se arranca con <code>npm start</code>.
-      </p>
-    </section>
 
-    <section class="card">
-      <h2>Lo que escucho</h2>
-      <div id="heard"><span class="interim">Silencio…</span></div>
-      <h2 style="margin-top:16px">Comandos enviados</h2>
-      <ul id="log"></ul>
-    </section>
-  </div>
-</main>
+      <div>
+        <h2>Registro</h2>
+        <ul class="log" id="log"></ul>
+        <p class="help">
+          Arranca el servidor con <code>npm start</code> y abre <code>http://localhost:8734</code>.
+          Si es la primera vez en este equipo, ejecuta <code>npm run setup-vosk</code> para bajar
+          <code>libvosk.dll</code> y el modelo en español. Con Vosk la orden se envía cuando detecta
+          tu pausa, no en la sílaba exacta. La barra ámbar bajo la palabra es el nivel del micrófono:
+          si no se mueve, el navegador no está recibiendo audio.
+        </p>
+      </div>
+    </div>
+  </section>
+
+</div>
 
 <script>
 const ACTIONS = [
@@ -107,18 +240,16 @@ const $ = (id) => document.getElementById(id);
 const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-function loadConfig() {
-  const saved = JSON.parse(localStorage.getItem('voice-slides') || '{}');
-  ACTIONS.forEach((a) => (a.words = saved[a.action] ?? a.dflt));
-  $('cooldown').value = saved.cooldown ?? 1.5;
-  $('engine').value = saved.engine || 'vosk';
-  rebuildMatchers();
-}
-
 function rebuildMatchers() {
   ACTIONS.forEach((a) => {
     a.re = a.words.split(',').map(norm).filter(Boolean).map((w) => new RegExp(`(^| )(${esc(w)})( |$)`));
   });
+  const first = norm(ACTIONS[0].words).split(' ')[0] || '';
+  $('cueWord').innerHTML = first
+    ? `<span class="mark">«</span>${first}<span class="mark">»</span>`
+    : '<span class="mark">«</span>sin palabra<span class="mark">»</span>';
+  const rest = ACTIONS[0].words.split(',').slice(1).map((w) => w.trim()).filter(Boolean);
+  $('cueAlso').textContent = rest.length ? `También vale: ${rest.join(', ')}.` : '';
 }
 
 function saveConfig() {
@@ -128,12 +259,20 @@ function saveConfig() {
   rebuildMatchers();
 }
 
+function loadConfig() {
+  const saved = JSON.parse(localStorage.getItem('voice-slides') || '{}');
+  ACTIONS.forEach((a) => (a.words = saved[a.action] ?? a.dflt));
+  $('cooldown').value = saved.cooldown ?? 1.5;
+  $('engine').value = saved.engine || 'vosk';
+  rebuildMatchers();
+}
+
 function renderTriggers() {
   $('triggers').innerHTML = ACTIONS.map((a) => `
     <tr>
       <td class="act">${a.label}</td>
       <td class="kw"><input type="text" data-act="${a.action}" value="${a.words.replace(/"/g, '&quot;')}"></td>
-      <td><button class="mini" data-fire="${a.action}" title="Probar tecla ${a.key}">${a.key}</button></td>
+      <td><button data-fire="${a.action}" title="Enviar ahora la tecla ${a.key}">${a.key}</button></td>
     </tr>`).join('');
   $('triggers').querySelectorAll('input').forEach((inp) => {
     inp.addEventListener('change', () => {
@@ -142,24 +281,39 @@ function renderTriggers() {
     });
   });
   $('triggers').querySelectorAll('[data-fire]').forEach((btn) => {
-    btn.addEventListener('click', () => send(btn.dataset.fire, '(prueba manual)'));
+    btn.addEventListener('click', () => send(btn.dataset.fire, 'prueba manual'));
   });
 }
 
-function status(text, cls) {
+function status(text, state, meta) {
   $('statusText').textContent = text;
-  $('dot').className = 'dot ' + cls;
+  $('lamp').dataset.state = state;
+  $('prompter').dataset.live = state === 'live';
+  if (meta) $('engineMeta').textContent = meta;
 }
 
 function log(text, kind) {
   const li = document.createElement('li');
-  li.className = kind || '';
+  if (kind) li.dataset.kind = kind;
   li.innerHTML = `<span class="t">${new Date().toLocaleTimeString()}</span><span class="a">${text}</span>`;
   $('log').prepend(li);
   while ($('log').children.length > 40) $('log').lastChild.remove();
 }
 
-async function send(action, spoken) {
+let fires = 0;
+function registerFire(action, spoken) {
+  fires++;
+  const num = $('advanceCount');
+  num.textContent = fires;
+  num.classList.remove('is-ticking');
+  void num.offsetWidth;
+  num.classList.add('is-ticking');
+  $('lastFired').hidden = false;
+  $('lastFired').innerHTML = `Enviado <b>${action}</b> tras oír «${spoken}».`;
+}
+
+async function send(action, spoken, onResult) {
+  let ok = false;
   try {
     const r = await fetch('/command', {
       method: 'POST',
@@ -167,29 +321,88 @@ async function send(action, spoken) {
       body: JSON.stringify({ action, spoken })
     });
     const j = await r.json();
-    if (j.ok) log(`${action}  ·  "${spoken}"`);
-    else { log(`${action} rechazado: ${j.error}`, 'bad'); status('El servidor rechazó el comando.', 'err'); }
+    if (j.ok) { ok = true; registerFire(action, spoken); log(`${action} · «${spoken}»`); }
+    else { log(`${action} rechazado: ${j.error}`, 'bad'); status('El servidor rechazó el comando.', 'alert'); }
   } catch {
-    log('Sin conexión con el servidor (npm start).', 'bad');
-    status('Servidor local no encontrado: ejecuta npm start.', 'err');
+    log('Sin conexión con el servidor local.', 'bad');
+    status('No encuentro el servidor: ejecuta npm start.', 'alert');
   }
+  if (onResult) onResult(ok ? 'fired' : 'failed');
+}
+
+const SILENCE = 'Silencio. Empieza a leer tu diapositiva.';
+const htmlEscape = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+/** Marca en ámbar las palabras que disparan una orden. */
+function markCues(text) {
+  const tokens = text.split(/\s+/).filter(Boolean);
+  const flat = tokens.map(norm);
+  const flagged = new Array(tokens.length).fill(false);
+  for (const kw of ACTIONS.flatMap((a) => a.words.split(',').map(norm).filter(Boolean))) {
+    const parts = kw.split(' ');
+    for (let i = 0; i + parts.length <= tokens.length; i++) {
+      if (parts.every((p, k) => flat[i + k] === p)) flagged.fill(true, i, i + parts.length);
+    }
+  }
+  return tokens.map((t, i) => (flagged[i] ? `<i class="wordCue">${htmlEscape(t)}</i>` : htmlEscape(t))).join(' ');
+}
+
+/** Acumula la frase dicha al final del texto anterior, sin saltos de línea. */
+function appendSaid(text) {
+  const host = $('streamText');
+  const said = document.createElement('span');
+  said.className = 'said';
+  said.innerHTML = markCues(text.trim());
+  if (host.children.length) host.append(' ');
+  host.append(said);
+  while (host.children.length > 140) host.firstElementChild.remove();
+  const stream = $('stream');
+  stream.scrollTop = stream.scrollHeight;
+  return said;
+}
+
+function findAction(text) {
+  const padded = ' ' + norm(text) + ' ';
+  return ACTIONS.find((a) => a.re.some((re) => re.test(padded)));
 }
 
 let lastFire = 0;
 function onTranscript(finalText, isInterim) {
-  $('heard').innerHTML = finalText + (isInterim ? ` <span class="interim">${isInterim}</span>` : '');
+  const el = $('heard');
+  el.classList.toggle('is-empty', !isInterim);
+  el.innerHTML = isInterim ? `<span class="interim">${htmlEscape(isInterim)}</span>` : SILENCE;
   if (!finalText) return;
+
+  const said = appendSaid(finalText);
+  const hit = findAction(finalText);
+  if (!hit) return;
+
   const cd = (Number($('cooldown').value) || 0) * 1000;
-  if (Date.now() - lastFire < cd) return;
-  const text = ' ' + norm(finalText) + ' ';
-  const hit = ACTIONS.find((a) => a.re.some((re) => re.test(text)));
-  if (hit) {
-    lastFire = Date.now();
-    send(hit.action, finalText.trim());
+  if (Date.now() - lastFire < cd) {
+    said.dataset.state = 'blocked';
+    return;
   }
+  lastFire = Date.now();
+  send(hit.action, finalText.trim(), (state) => { said.dataset.state = state; });
 }
 
-/* ---------- Motor Vosk: micrófono -> PCM float32 -> POST /asr ---------- */
+/* ---------- nivel del micrófono ---------- */
+let peak = 0;
+let meterShown = false;
+function pushLevel(chunk) {
+  let p = 0;
+  for (let i = 0; i < chunk.length; i += 8) {
+    const v = Math.abs(chunk[i]);
+    if (v > p) p = v;
+  }
+  peak = Math.max(p, peak * 0.82);
+  if (!meterShown) { meterShown = true; $('meter').hidden = false; }
+  const pct = Math.min(1, peak * 2.6) * 100;
+  $('meterFill').style.width = `${pct}%`;
+  $('meter').dataset.hot = peak > 0.4;
+}
+
+/* ---------- Vosk: micrófono -> PCM float32 -> POST /asr ---------- */
 const WORKLET = `
 class PcmOut extends AudioWorkletProcessor {
   constructor() { super(); this.n = 0; this.buf = new Float32Array(1600); }
@@ -224,9 +437,9 @@ async function startVosk() {
   URL.revokeObjectURL(url);
   vosk.node = new AudioWorkletNode(vosk.ctx, 'pcm-out');
   vosk.ctx.createMediaStreamSource(vosk.stream).connect(vosk.node);
-  vosk.node.port.onmessage = (e) => { vosk.queue.push(e.data); pumpVosk(); };
-  vosk.sid = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-  status(`Escuchando con Vosk a ${vosk.ctx.sampleRate} Hz…`, 'live');
+  vosk.node.port.onmessage = (e) => { pushLevel(e.data); vosk.queue.push(e.data); pumpVosk(); };
+  vosk.sid = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+  status(`Escuchando offline a ${vosk.ctx.sampleRate} Hz.`, 'live', 'motor Vosk');
 }
 
 async function pumpVosk() {
@@ -242,8 +455,8 @@ async function pumpVosk() {
       if (j.text) onTranscript(j.text, '');
       else onTranscript('', j.partial || '');
     } catch (err) {
-      status(`Vosk falló: ${err.message}`, 'err');
       vosk.queue.length = 0;
+      status(`Vosk falló: ${err.message}`, 'alert');
       break;
     }
   }
@@ -256,9 +469,12 @@ function stopVosk() {
   if (vosk.stream) vosk.stream.getTracks().forEach((t) => t.stop());
   if (vosk.ctx) vosk.ctx.close();
   vosk = { ctx: null, stream: null, node: null, sid: null, queue: [], sending: false };
+  $('meter').hidden = true;
+  meterShown = false;
+  peak = 0;
 }
 
-/* ---------- Motor Google: Web Speech API (Chrome/Edge) ---------- */
+/* ---------- Google: Web Speech API (Chrome/Edge) ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
 
@@ -282,11 +498,12 @@ function buildGoogle() {
   rec.onerror = (ev) => {
     if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
       wantListening = false;
-      status('Micrófono denegado. Revisa el permiso en el icono del candado.', 'err');
+      $('toggle').textContent = 'Iniciar escucha';
+      status('El navegador bloqueó el micrófono. Ábrelo en el icono del candado.', 'alert');
     } else if (ev.error === 'network') {
-      status('Sin conexión: el reconocimiento de Chrome necesita internet.', 'err');
+      status('Sin conexión: el motor Google necesita internet.', 'alert');
     } else if (ev.error !== 'aborted' && ev.error !== 'no-speech') {
-      status(`Error de reconocimiento: ${ev.error}`, 'err');
+      status(`El reconocimiento falló: ${ev.error}.`, 'alert');
     }
   };
   rec.onend = () => {
@@ -306,12 +523,12 @@ async function start() {
     if (!SR) {
       wantListening = false;
       $('toggle').textContent = 'Iniciar escucha';
-      status('Este navegador no tiene Web Speech API: usa Vosk o Chrome/Edge.', 'err');
+      status('Este navegador no trae Web Speech API: usa el motor Vosk.', 'alert');
       return;
     }
     if (!rec) buildGoogle();
     try { rec.start(); } catch { /* ya activo */ }
-    status('Escuchando con el motor de Google…', 'live');
+    status('Escuchando con el motor de Google.', 'live', 'motor Google');
     return;
   }
   try {
@@ -319,7 +536,9 @@ async function start() {
   } catch (err) {
     wantListening = false;
     $('toggle').textContent = 'Iniciar escucha';
-    status(err.name === 'NotAllowedError' ? 'Permiso de micrófono denegado.' : `Vosk no arrancó: ${err.message}`, 'err');
+    status(err.name === 'NotAllowedError'
+      ? 'Permiso de micrófono denegado: vuelve a abrirlo.'
+      : `Vosk no arrancó: ${err.message}`, 'alert');
   }
 }
 
@@ -328,25 +547,42 @@ function stop() {
   if (rec) rec.abort();
   stopVosk();
   $('toggle').textContent = 'Iniciar escucha';
-  status('En pausa.', 'off');
+  status('En pausa.', 'idle', $('engine').value === 'google' ? 'motor Google' : 'motor Vosk');
+  const el = $('heard');
+  el.textContent = 'Silencio. Empieza a leer tu diapositiva.';
+  el.classList.add('is-empty');
 }
 
 $('toggle').addEventListener('click', () => (wantListening ? stop() : start()));
-$('engine').addEventListener('change', () => { if (wantListening) { stop(); start(); } else saveConfig(); });
+$('engine').addEventListener('change', () => {
+  if (wantListening) { stop(); start(); } else {
+    saveConfig();
+    status('En pausa.', 'idle', $('engine').value === 'google' ? 'motor Google' : 'motor Vosk');
+  }
+});
 $('cooldown').addEventListener('change', saveConfig);
+$('settingsBtn').addEventListener('click', () => {
+  const open = $('settingsBtn').getAttribute('aria-expanded') === 'true';
+  $('settingsBtn').setAttribute('aria-expanded', String(!open));
+  $('settings').hidden = open;
+});
 
 loadConfig();
 renderTriggers();
+status('En pausa.', 'idle', $('engine').value === 'google' ? 'motor Google' : 'motor Vosk');
 
 fetch('/health').then((r) => r.json()).then((j) => {
   log('Servidor local conectado.');
   if (!j.vosk && $('engine').value === 'vosk') {
-    status('Vosk no está listo: ejecuta npm run setup-vosk, o usa el motor Google.', 'err');
     $('engine').value = 'google';
+    saveConfig();
+    status('Vosk no está listo: ejecuta npm run setup-vosk, o usa el motor Google.', 'alert', 'motor Google');
   }
-}).catch(() => status('Servidor local no encontrado: ejecuta npm start.', 'err'));
+}).catch(() => status('No encuentro el servidor: ejecuta npm start.', 'alert'));
 
-window.addEventListener('beforeunload', () => { if (vosk.sid) fetch(`/asr?sid=${vosk.sid}&flush=1`, { method: 'POST' }).catch(() => {}); });
+window.addEventListener('beforeunload', () => {
+  if (vosk.sid) fetch(`/asr?sid=${vosk.sid}&flush=1`, { method: 'POST' }).catch(() => {});
+});
 </script>
 </body>
 </html>
